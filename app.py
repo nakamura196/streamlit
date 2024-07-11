@@ -22,7 +22,7 @@ def set_sidebar(collection_list):
     collection_options = [col['name'] for col in collection_list]
     collection_keys = {col['name']: col['key'] for col in collection_list}
     selected_collection_name = st.sidebar.selectbox("Select a collection", options=collection_options)
-    return collection_keys.get(selected_collection_name, "")
+    return collection_keys.get(selected_collection_name, ""), selected_collection_name
 
 
 # 文献データをDataFrameに変換
@@ -48,10 +48,13 @@ def create_df(zot, collection_id):
 def main():
     zot = init_zotero()
     collection_list = fetch_collections(zot)
-    collection_id = set_sidebar(collection_list)
+    collection_id, collection_name = set_sidebar(collection_list)
     df = create_df(zot, collection_id)
 
     st.title('Zotero x Streamlit')
+
+    st.write(collection_name)
+
     st.header('Table')
     if not df.empty:
         st.write(df)
