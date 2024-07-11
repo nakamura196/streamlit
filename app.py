@@ -46,6 +46,20 @@ def create_df(zot, collection_id):
 
 # アプリケーションのメイン関数
 def main():
+
+    # ページの設定
+    st.set_page_config(
+        page_title="Zotero x Streamlit",  # ブラウザのタイトルバーに表示されるタイトル
+        page_icon="🧊",               # ブラウザのタブに表示されるアイコン
+        # layout="wide",                # レイアウトを広いものに設定
+        # initial_sidebar_state="expanded",  # サイドバーの初期状態を展開に設定
+        menu_items={                  # 追加のメニューオプションとともにメタタグ設定
+            'Get Help': "https://github.com/nakamura196/zotero_streamlit/",
+            'Report a bug': 'https://github.com/nakamura196/zotero_streamlit/issues',
+            'About': "App development using [Zotero](https://www.zotero.org/)'s API and Streamlit"
+        }
+    )
+
     zot = init_zotero()
     collection_list = fetch_collections(zot)
     collection_id, collection_name = set_sidebar(collection_list)
@@ -64,5 +78,6 @@ def main():
     else:
         st.write("No data available.")
 
+    
 if __name__ == "__main__":
     main()
