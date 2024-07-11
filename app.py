@@ -1,119 +1,79 @@
 import streamlit as st
+from pyzotero import zotero
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.datasets import load_iris
-from sklearn.tree import DecisionTreeClassifier, plot_tree
+import json
+import plotly.express as px
 
+library_id = st.secrets["zotero"]["library_id"]
+library_type = st.secrets["zotero"]["library_type"]
+api_key = st.secrets["zotero"]["api_key"]
 
-input_num = st.number_input('Input a number', value=0)
+zot = zotero.Zotero(library_id, library_type, api_key)
 
-result = input_num ** 2
-st.write('Result: ', result)
+def set_sidebar():
+    # Sidebarの選択肢を定義する
+    options = ["dh2024", "jadh2024"]
+    choice = st.sidebar.selectbox("Select a collection", options)
 
-st.title('streamlit Tutorial')
+    # Mainコンテンツの表示を変える
+    if choice == "dh2024":
+        # st.write("You selected Option 1")
+        collection_id = "LC33JC8D"
+    elif choice == "jadh2024":
+        collection_id = "P2R95QRF"
+        # st.write("You selected Option 2")
+    else:
+        collection_id = ""
+        # st.write("You selected Option 3")
 
-st.header('This is a header')
+    return collection_id
 
-st.subheader('This is a subheader')
+def create_df(collection_id):
 
-st.text('Hello World!')
+    if collection_id == "":
+        return
 
-# st.write()はMarkdown表記対応
-st.write('# headline1')
-# 以下のように明示的に書くことも可能
-st.markdown('# headline2')
+    # コレクション ID を指定して文献を取得
+    # collection_id = 'LC33JC8D'
+    items = zot.collection_items(collection_id)
 
-st.write(['apple', 'orange', 'banana'])
+    with open('items.json', 'w') as f:
+        # f.write(str(items))
+        json.dump(items, f, indent=4, ensure_ascii=False)
 
-# ダミーデータの作成
-df = pd.DataFrame({
-    'name': ['Alice', 'Bob'],
-    'age': [25, 30],
-    'gender': ['female', 'male']
-})
+    rows = []
 
-# DataFrameを表示
-st.write(df)
-# st.dataframe()でも表示可能
-st.dataframe(df)
+    for item in items:
+        item_type = item['data']['itemType']
 
-if st.button('Say hello'):
-    st.write('Hello World!')
+        if item_type == "attachment":
+            continue
 
+        rows.append({
+            'title': item['data']['title'],
+            "itemType": item_type,
+            "creators": ", ".join([f"{creator['firstName']} {creator['lastName']}" for creator in item['data']['creators']]) if "creators" in item['data'] else "",
+            "date": item['data']['date'] if "date" in item['data'] else "",
+        })
 
-options = st.multiselect(
-    'What are your favorite colors',
-    ['Green', 'Yellow', 'Red', 'Blue'],
-    default=['Yellow', 'Red'] # デフォルトの設定
-)
+    df = pd.DataFrame(rows)
 
-value = st.slider('Select a value', 0, 100, 50) # min, max, default
+    return df
 
-# Sidebarの選択肢を定義する
-options = ["Option 1", "Option 2", "Option 3"]
-choice = st.sidebar.selectbox("Select an option", options)
+collection_id = set_sidebar()
+df = create_df(collection_id)
 
-# Mainコンテンツの表示を変える
-if choice == "Option 1":
-    st.write("You selected Option 1")
-elif choice == "Option 2":
-    st.write("You selected Option 2")
+st.title('Zotero x Streamlit')
+
+st.header('Table')
+
+if not df.empty:
+    st.write(df[['title', 'itemType', 'creators', 'date']])
+
+    # Chart
+    st.header('Chart')
+    fig = px.pie(df, names='itemType', title='Item Type Distribution')
+    st.plotly_chart(fig)
 else:
-    st.write("You selected Option 3")
+    st.write("No data available.")
 
-
-# 2列のカラムを作成
-col1, col2 = st.columns(2)
-
-# col1にテキストを表示
-with col1:
-    st.header("Column 1")
-    st.write("This is column 1.")
-
-# col2にDataFrameを表示
-with col2:
-    st.header("Column 2")
-    # DataFrameを表示
-    st.write(df)
-
-# Warningの非表示
-st.set_option('deprecation.showPyplotGlobalUse', False)
-
-# グラフを描画する
-def plot_graph():
-    x = np.linspace(0, 10, 100)
-    y = np.sin(x)
-    plt.plot(x, y)
-    st.pyplot()
-
-# グラフを表示するボタンを表示する
-if st.button('Plot graph'):
-    plot_graph()
-
-# データをロードする
-iris = load_iris()
-X, y = iris.data, iris.target
-
-# モデルを学習する
-model = DecisionTreeClassifier()
-model.fit(X, y)
-
-# モデルを可視化する
-def plot_model():
-    plot_tree(model)
-    st.pyplot()
-
-# モデルを表示するボタンを表示する
-if st.button('Plot model'):
-    plot_model()
-
-# ボタンが押された回数を保持する
-if "count" not in st.session_state:
-    st.session_state.count = 0
-
-# ボタンを表示し、クリックされた回数を表示する
-if st.button("Click me"):
-    st.session_state.count += 1
-
-st.write(f"You clicked the button {st.session_state.count} times.")
